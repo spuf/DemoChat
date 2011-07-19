@@ -11,7 +11,7 @@ import functools
 
 from tornado.options import define, options
 
-define('port', default=81, help='run on the given port', type=int)
+define('port', default=80, help='run on the given port', type=int)
 
 class Application(tornado.web.Application):
     def __init__(self):
@@ -30,7 +30,6 @@ class Application(tornado.web.Application):
             #debug=True
         )
         tornado.web.Application.__init__(self, handlers, **settings)
-
 
 class MainHandler(tornado.web.RequestHandler):
     @tornado.web.asynchronous
@@ -52,11 +51,6 @@ class ChatSocketHandler(tornado.websocket.WebSocketHandler):
     waiters = set()
 
     def open(self):
-        self.time = time.time() - 10
-        for waiter in ChatSocketHandler.waiters:
-            if self.request.remote_ip == waiter.request.remote_ip:
-                self.close()
-                return
         ChatSocketHandler.waiters.add(self)
         logging.info('Add waiter')
 
@@ -76,21 +70,17 @@ class ChatSocketHandler(tornado.websocket.WebSocketHandler):
                 logging.error('Error sending message', exc_info=True)
 
     def on_message(self, message):
-        now = time.time()
-        if now - self.time > 10:
-            self.time = now
-            logging.info('Got message %r', message)
-            parsed = tornado.escape.json_decode(message)
-            text = unicode(parsed['body']).strip()
-            if len(text) > 0:
-                chat = {
-                    'body': text[:100],
-                    'time': time.time()
-                }
-                chat['html'] = self.render_string('message.html', message=chat)
-                callback = functools.partial(ChatSocketHandler.send_updates, chat=chat)
-                self.application.db.messages.insert(chat, callback=callback)
-
+        logging.info('Got message %r', message)
+        parsed = tornado.escape.json_decode(message)
+        text = unicode(parsed['body']).strip()
+        if len(text) > 0:
+            chat = {
+                'body': text[:100],
+                'time': time.time()
+            }
+            chat['html'] = self.render_string('message.html', message=chat)
+            callback = functools.partial(ChatSocketHandler.send_updates, chat=chat)
+            self.application.db.messages.insert(chat, callback=callback)
 
 def main():
     tornado.options.parse_command_line()
