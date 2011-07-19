@@ -39,6 +39,7 @@ class MainHandler(tornado.web.RequestHandler):
 
     def on_response(self, response, error):
         if error:
+            self.application.db.messages.drop()
             raise tornado.web.HTTPError(500)
         self.render('index.html', messages=response[::-1])
 
@@ -51,6 +52,7 @@ class ChatSocketHandler(tornado.websocket.WebSocketHandler):
     waiters = set()
 
     def open(self):
+        self.time = time.time()
         ChatSocketHandler.waiters.add(self)
         logging.info('Add waiter')
 
@@ -70,15 +72,20 @@ class ChatSocketHandler(tornado.websocket.WebSocketHandler):
                 logging.error('Error sending message', exc_info=True)
 
     def on_message(self, message):
-        logging.info('Got message %r', message)
-        parsed = tornado.escape.json_decode(message)
-        chat = {
-            'body': parsed['body'],
-            'time': time.time()
-        }
-        chat['html'] = self.render_string('message.html', message=chat)
-        callback = functools.partial(ChatSocketHandler.send_updates, chat=chat)
-        self.application.db.messages.insert(chat, callback=callback)
+        now = time.time()
+        if now - self.time > 1:
+            self.time = time.time()
+            logging.info('Got message %r', message)
+            parsed = tornado.escape.json_decode(message)
+            text = unicode(parsed['body']).strip()
+            if len(text) > 0:
+                chat = {
+                    'body': text[:100],
+                    'time': time.time()
+                }
+                chat['html'] = self.render_string('message.html', message=chat)
+                callback = functools.partial(ChatSocketHandler.send_updates, chat=chat)
+                self.application.db.messages.insert(chat, callback=callback)
 
 
 def main():
