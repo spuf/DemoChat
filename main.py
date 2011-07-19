@@ -52,7 +52,11 @@ class ChatSocketHandler(tornado.websocket.WebSocketHandler):
     waiters = set()
 
     def open(self):
-        self.time = time.time()
+        self.time = time.time() - 10
+        for waiter in ChatSocketHandler.waiters:
+            if self.request.remote_ip == waiter.request.remote_ip:
+                self.close()
+                return
         ChatSocketHandler.waiters.add(self)
         logging.info('Add waiter')
 
@@ -73,8 +77,8 @@ class ChatSocketHandler(tornado.websocket.WebSocketHandler):
 
     def on_message(self, message):
         now = time.time()
-        if now - self.time > 1:
-            self.time = time.time()
+        if now - self.time > 10:
+            self.time = now
             logging.info('Got message %r', message)
             parsed = tornado.escape.json_decode(message)
             text = unicode(parsed['body']).strip()
