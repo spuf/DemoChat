@@ -18,12 +18,20 @@
 			<form action="/add_message" method="post" id="messageform">
 				<table>
 					<tr>
-					<td><input name="body" id="message" style="width:500px"/></td>
+					<td><input name="body" id="message" style="width:500px" maxlength="80"/></td>
 					<td style="padding-left:5px">
 						<input type="submit" id="post" value="{{ _('Post') }}"/>
 						<input type="hidden" name="next" value="{{ request.path }}"/>
 						{{ xsrf_form_html() }}
 					</td>
+					<tr>
+					<td>
+						<a href="https://github.com/spuf/DemoChat" target="_blank">GitHub</a>
+						<a href="http://habrahabr.ru/blogs/webdev/124119/" target="_blank">Habrahabr</a>
+						(to prevent flood: ban after 20 messages)
+						[in chat <span id="count">?</span> anons]
+					</td>
+					</tr>
 				</table>
 			</form>
 		</div>

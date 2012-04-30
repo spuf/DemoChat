@@ -19,6 +19,8 @@ $(document).ready(function() {
 	});
 	$("#message").select();
 	updater.start();
+	setInterval(checkCount, 10000);
+	checkCount();
 });
 
 function newMessage(form) {
@@ -66,3 +68,7 @@ var updater = {
 		node.slideDown();
 	}
 };
+
+function checkCount() {
+	$('#count').load('/count');
+}

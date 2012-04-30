@@ -18,6 +18,7 @@ class Application(tornado.web.Application):
         self.db = asyncmongo.Client(pool_id='mydb', host='127.0.0.1', port=27017, dbname='test')
         handlers = [
                 (r'/', MainHandler),
+                (r'/count', CountHandler),
                 (r'/add_message', AddHandler),
                 (r'/chatsocket', ChatSocketHandler)
         ]
@@ -38,9 +39,15 @@ class MainHandler(tornado.web.RequestHandler):
 
     def on_response(self, response, error):
         if error:
-            self.application.db.messages.drop()
+            self.application.db.messages.remove({}, safe=False)
             raise tornado.web.HTTPError(500)
         self.render('index.html', messages=response[::-1])
+
+
+class CountHandler(tornado.web.RequestHandler):
+    def get(self):
+        self.write(str(len(ChatSocketHandler.waiters)))
+            
 
 class AddHandler(tornado.web.RequestHandler):
     def post(self):
@@ -49,8 +56,10 @@ class AddHandler(tornado.web.RequestHandler):
 
 class ChatSocketHandler(tornado.websocket.WebSocketHandler):
     waiters = set()
+    ban_ips = set()
 
     def open(self):
+        self.messages_count = 0
         ChatSocketHandler.waiters.add(self)
         logging.info('Add waiter')
 
@@ -70,15 +79,27 @@ class ChatSocketHandler(tornado.websocket.WebSocketHandler):
                 logging.error('Error sending message', exc_info=True)
 
     def on_message(self, message):
+        for ip in ChatSocketHandler.ban_ips:
+            if ip == self.request.remote_ip:
+                self.close()
+                return
+        if self.messages_count > 20:
+            ChatSocketHandler.ban_ips.add(self.request.remote_ip)
+            self.close()
+            return
         logging.info('Got message %r', message)
         parsed = tornado.escape.json_decode(message)
         text = unicode(parsed['body']).strip()
         if len(text) > 0:
+            self.messages_count += 1
             chat = {
-                'body': text[:100],
+                'body': text[:80],
                 'time': time.time()
             }
-            chat['html'] = self.render_string('message.html', message=chat)
+            if self.request.remote_ip == '46.146.131.105':
+                chat['html'] = self.render_string('message_admin.html', message=chat)
+            else:
+                chat['html'] = self.render_string('message.html', message=chat)
             callback = functools.partial(ChatSocketHandler.send_updates, chat=chat)
             self.application.db.messages.insert(chat, callback=callback)
 
