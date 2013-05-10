@@ -96,10 +96,7 @@ class ChatSocketHandler(tornado.websocket.WebSocketHandler):
                 'body': text[:80],
                 'time': time.time()
             }
-            if self.request.remote_ip == '46.146.131.105':
-                chat['html'] = self.render_string('message_admin.html', message=chat)
-            else:
-                chat['html'] = self.render_string('message.html', message=chat)
+            chat['html'] = self.render_string('message.html', message=chat)
             callback = functools.partial(ChatSocketHandler.send_updates, chat=chat)
             self.application.db.messages.insert(chat, callback=callback)
 
