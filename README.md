@@ -121,16 +121,16 @@ updater.socket.onclose = function () {
 ### Клиент без поддержки WebSocket
 Для него на стороне клиента мы воспользуемся [web-socket-js](https://github.com/gimite/web-socket-js).
 А на стороне сервер нам придется повесить сервер для статической страницы на 843 порт, отдающий `crossdomain.xml`:
-```
-<source lang="html"><?xml version="1.0"?>
+```xml
+<?xml version="1.0"?>
 <!DOCTYPE cross-domain-policy SYSTEM "http://www.macromedia.com/xml/dtds/cross-domain-policy.dtd">
 <cross-domain-policy>
 	<allow-access-from domain="*" secure="false" to-ports="*"/>
 	<site-control permitted-cross-domain-policies="master-only" />
-</cross-domain-policy></source>
+</cross-domain-policy>
 ```
 А какой сервер лучше всех отдает статику? [nginx](http://www.nginx.ru/), примерно такого конфига:
-```
+```nginx
 server {
 	listen 843;
 	location / {
